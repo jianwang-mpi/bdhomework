@@ -1,3 +1,4 @@
+import org.apache.commons.lang.SystemUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
@@ -65,31 +66,47 @@ public class Hw1Grp2 {
                 } else {
                     countHashMap.put(key, 1);
                     averageHashMap.put(key, Double.valueOf(line.get(res.getAvg())));
+
                 }
             }
-            for(String key:countHashMap.keySet()){
-                averageHashMap.put(key,averageHashMap.get(key)/countHashMap.get(key));
+            for (String key : countHashMap.keySet()) {
+                averageHashMap.put(key, averageHashMap.get(key) / countHashMap.get(key));
             }
-            saveHbase(averageHashMap, "avg(R"+res.getAvg()+")");
+            saveHbase(averageHashMap, "avg(R" + res.getAvg() + ")");
         }
         if (res.getMax() != null) {
-            HashMap<String, Comparable> countHashMap = new HashMap<String, Comparable>();
+            HashMap<String, Comparable> compareHashMap = new HashMap<String, Comparable>();
             for (List<String> line : data) {
                 String key = line.get(groutBy);
-                if (countHashMap.containsKey(key)) {
-                    countHashMap.put(key, countHashMap.get(key) + 1);
-                    averageHashMap.put(key, averageHashMap.get(key) + Double.valueOf(line.get(res.getAvg())));
+                Comparable value = parseValue(line.get(res.getMax()));
+                if (compareHashMap.containsKey(key)) {
+                    Comparable oldValue = compareHashMap.get(key);
+                    if (oldValue.compareTo(value) < 0) {
+                        compareHashMap.put(key, value);
+                    }
                 } else {
-                    countHashMap.put(key, 1);
-                    averageHashMap.put(key, Double.valueOf(line.get(res.getAvg())));
+                    compareHashMap.put(key, value);
                 }
             }
-            for(String key:countHashMap.keySet()){
-                averageHashMap.put(key,averageHashMap.get(key)/countHashMap.get(key));
-            }
-            saveHbase(averageHashMap, "avg(R"+res.getAvg()+")");
+            saveHbase(compareHashMap, "max(R" + res.getMax() + ")");
         }
 
+    }
+
+    private Comparable parseValue(String stringValue) {
+        Comparable result = null;
+        if (Character.isDigit(stringValue.charAt(0))) {
+            try {
+                Integer integer = Integer.valueOf(stringValue);
+                result = integer;
+            } catch (Exception e) {
+                Double d = Double.valueOf(stringValue);
+                result = d;
+            }
+        } else {
+            result = stringValue;
+        }
+        return result;
     }
 
     private void createDataBase() throws IOException {
@@ -126,7 +143,7 @@ public class Hw1Grp2 {
     private List<List<String>> getData(List<String> dataLines) {
         List<List<String>> result = new ArrayList<List<String>>(dataLines.size());
         for (String s : dataLines) {
-            result.add(Arrays.asList(s.split("|")));
+            result.add(Arrays.asList(s.split("[|]")));
         }
         return result;
     }
