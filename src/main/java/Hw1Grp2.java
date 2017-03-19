@@ -7,6 +7,8 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.Put;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -36,10 +38,11 @@ public class Hw1Grp2 {
 
         List<String> dataLines = readFile(filePath);
         List<List<String>> data = getData(dataLines);
+        createDataBase();
         for (String s : dataLines) {
             System.out.println(s);
         }
-        if (res.count) {
+        if (res.isCount()) {
             HashMap<String, Integer> countHashMap = new HashMap<String, Integer>();
             for (List<String> line : data) {
                 String key = line.get(groutBy);
@@ -49,26 +52,75 @@ public class Hw1Grp2 {
                     countHashMap.put(key, 1);
                 }
             }
-
+            saveHbase(countHashMap, "count");
+        }
+        if (res.getAvg() != null) {
+            HashMap<String, Integer> countHashMap = new HashMap<String, Integer>();
+            HashMap<String, Double> averageHashMap = new HashMap<String, Double>();
+            for (List<String> line : data) {
+                String key = line.get(groutBy);
+                if (countHashMap.containsKey(key)) {
+                    countHashMap.put(key, countHashMap.get(key) + 1);
+                    averageHashMap.put(key, averageHashMap.get(key) + Double.valueOf(line.get(res.getAvg())));
+                } else {
+                    countHashMap.put(key, 1);
+                    averageHashMap.put(key, Double.valueOf(line.get(res.getAvg())));
+                }
+            }
+            for(String key:countHashMap.keySet()){
+                averageHashMap.put(key,averageHashMap.get(key)/countHashMap.get(key));
+            }
+            saveHbase(averageHashMap, "avg(R"+res.getAvg()+")");
+        }
+        if (res.getMax() != null) {
+            HashMap<String, Comparable> countHashMap = new HashMap<String, Comparable>();
+            for (List<String> line : data) {
+                String key = line.get(groutBy);
+                if (countHashMap.containsKey(key)) {
+                    countHashMap.put(key, countHashMap.get(key) + 1);
+                    averageHashMap.put(key, averageHashMap.get(key) + Double.valueOf(line.get(res.getAvg())));
+                } else {
+                    countHashMap.put(key, 1);
+                    averageHashMap.put(key, Double.valueOf(line.get(res.getAvg())));
+                }
+            }
+            for(String key:countHashMap.keySet()){
+                averageHashMap.put(key,averageHashMap.get(key)/countHashMap.get(key));
+            }
+            saveHbase(averageHashMap, "avg(R"+res.getAvg()+")");
         }
 
     }
 
     private void createDataBase() throws IOException {
         String tableName = "Result";
-        HTableDescriptor htd = new HTableDescriptor(TableName.valueOf(tableName));
-        // create column descriptor
-        HColumnDescriptor cf = new HColumnDescriptor("res");
-        htd.addFamily(cf);
         // configure HBase
         Configuration configuration = HBaseConfiguration.create();
         HBaseAdmin hAdmin = new HBaseAdmin(configuration);
+        if (hAdmin.tableExists(tableName)) {// if table to create exists, delete it first.
+            hAdmin.disableTable(tableName);
+            hAdmin.deleteTable(tableName);
+            System.out.println(tableName + " is exist,detele....");
+        }
+        HTableDescriptor htd = new HTableDescriptor(TableName.valueOf(tableName));
+        htd.addFamily(new HColumnDescriptor("res"));
         hAdmin.createTable(htd);
         hAdmin.close();
     }
 
-    private void saveHbase(HashMap<String, Object> source) {
+    private void saveHbase(HashMap<String, ?> source, String name) throws IOException {
+        String tableName = "Result";
+        Configuration configuration = HBaseConfiguration.create();
+        HTable table = new HTable(configuration, tableName);
+        for (String key : source.keySet()) {
+            Put put = new Put(key.getBytes());
+            put.add("res".getBytes(), name.getBytes(), source.get(key).toString().getBytes());
+            table.put(put);
+        }
 
+
+        table.close();
+        System.out.println("put successfully");
     }
 
     private List<List<String>> getData(List<String> dataLines) {
