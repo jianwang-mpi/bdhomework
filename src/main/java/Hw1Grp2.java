@@ -14,6 +14,7 @@ import org.apache.hadoop.hbase.client.Put;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.math.BigDecimal;
 import java.net.URI;
 import java.util.*;
 
@@ -70,7 +71,7 @@ public class Hw1Grp2 {
                 }
             }
             for (String key : countHashMap.keySet()) {
-                averageHashMap.put(key, averageHashMap.get(key) / countHashMap.get(key));
+                averageHashMap.put(key, new BigDecimal(averageHashMap.get(key) / countHashMap.get(key)).setScale(2, BigDecimal.ROUND_HALF_UP).doubleValue());
             }
             saveHbase(averageHashMap, "avg(R" + res.getAvg() + ")");
         }
@@ -89,6 +90,19 @@ public class Hw1Grp2 {
                 }
             }
             saveHbase(compareHashMap, "max(R" + res.getMax() + ")");
+        }
+        if (res.getSum() != null) {
+            HashMap<String, Double> sumHashMap = new HashMap<String, Double>();
+            for (List<String> line : data) {
+                String key = line.get(groutBy);
+                if (sumHashMap.containsKey(key)) {
+                    sumHashMap.put(key, sumHashMap.get(key) + Double.valueOf(line.get(res.getAvg())));
+                } else {
+                    sumHashMap.put(key, Double.valueOf(line.get(res.getAvg())));
+
+                }
+            }
+            saveHbase(sumHashMap, "sum(R" + res.getSum() + ")");
         }
 
     }
@@ -187,6 +201,9 @@ public class Hw1Grp2 {
             if (parameter.startsWith("max")) {
                 res.setMax(Integer.valueOf(String.valueOf(parameter.toCharArray(), 5, parameter.length() - 6)));
             }
+            if (parameter.startsWith("sum")) {
+                res.setSum(Integer.valueOf(String.valueOf(parameter.toCharArray(), 5, parameter.length() - 6)));
+            }
         }
         return res;
     }
@@ -195,11 +212,21 @@ public class Hw1Grp2 {
         private boolean count;
         private Integer avg;
         private Integer max;
+        private Integer sum;
 
         public Res() {
             count = false;
             avg = null;
             max = null;
+            sum = null;
+        }
+
+        public Integer getSum() {
+            return sum;
+        }
+
+        public void setSum(Integer sum) {
+            this.sum = sum;
         }
 
         public boolean isCount() {
